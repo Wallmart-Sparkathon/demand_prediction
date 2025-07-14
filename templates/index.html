@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demand Prediction App</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .card {
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+            border: none;
+        }
+        .prediction-result {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .error-result {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ffa500 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .loading {
+            display: none;
+        }
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        .btn-predict {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+        .btn-predict:hover {
+            transform: translateY(-2px);
+            color: white;
+        }
+        .feature-card {
+            border-left: 4px solid #667eea;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <!-- Header -->
+    <nav class="navbar navbar-expand-lg gradient-bg">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-chart-line me-2"></i>
+                Demand Prediction System
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link text-white" href="#" onclick="showModelInfo()">
+                    <i class="fas fa-info-circle me-1"></i>Model Info
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container my-5">
+        <!-- Main Form -->
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header gradient-bg">
+                        <h3 class="card-title mb-0">
+                            <i class="fas fa-calculator me-2"></i>
+                            Demand Prediction
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="predictionForm">
+                            <div class="row">
+                                <!-- Time Features -->
+                                <div class="col-md-6 mb-3">
+                                    <div class="card feature-card">
+                                        <div class="card-body">
+                                            <h6 class="card-title"><i class="fas fa-calendar me-2"></i>Time Features</h6>
+                                            <div class="mb-3">
+                                                <label for="week" class="form-label">Week (1-52)</label>
+                                                <input type="number" class="form-control" id="week" name="Week" min="1" max="52" value="1" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="month" class="form-label">Month (1-12)</label>
+                                                <input type="number" class="form-control" id="month" name="Month" min="1" max="12" value="1" required>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Product Features -->
+                                <div class="col-md-6 mb-3">
+                                    <div class="card feature-card">
+                                        <div class="card-body">
+                                            <h6 class="card-title"><i class="fas fa-box me-2"></i>Product Features</h6>
+                                            <div class="mb-3">
+                                                <label for="product" class="form-label">Product Name</label>
+                                                <select class="form-control" id="product" name="Product Name" required>
+                                                    <option value="">Select Product</option>
+                                                    {% for product in products %}
+                                                    <option value="{{ product }}">{{ product }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="category" class="form-label">Category</label>
+                                                <select class="form-control" id="category" name="Category" required>
+                                                    <option value="">Select Category</option>
+                                                    {% for category in categories %}
+                                                    <option value="{{ category }}">{{ category }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Location Features -->
+                                <div class="col-md-6 mb-3">
+                                    <div class="card feature-card">
+                                        <div class="card-body">
+                                            <h6 class="card-title"><i class="fas fa-map-marker-alt me-2"></i>Location Features</h6>
+                                            <div class="mb-3">
+                                                <label for="store" class="form-label">Store Location</label>
+                                                <select class="form-control" id="store" name="Store Location" required>
+                                                    <option value="">Select Store</option>
+                                                    {% for store in stores %}
+                                                    <option value="{{ store }}">{{ store }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="cityMultiplier" class="form-label">City Multiplier</label>
+                                                <input type="number" class="form-control" id="cityMultiplier" name="CityMultiplier" step="0.1" min="0.5" max="3.0" value="1.0" required>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Market Features -->
+                                <div class="col-md-6 mb-3">
+                                    <div class="card feature-card">
+                                        <div class="card-body">
+                                            <h6 class="card-title"><i class="fas fa-chart-bar me-2"></i>Market Features</h6>
+                                            <div class="mb-3">
+                                                <label for="trendScore" class="form-label">Trend Score (0-100)</label>
+                                                <input type="number" class="form-control" id="trendScore" name="TrendScore" min="0" max="100" value="25" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="demandMultiplier" class="form-label">Demand Multiplier</label>
+                                                <input type="number" class="form-control" id="demandMultiplier" name="DemandMultiplier" step="0.1" min="0.5" max="10.0" value="1.5" required>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Event Features -->
+                                <div class="col-12 mb-3">
+                                    <div class="card feature-card">
+                                        <div class="card-body">
+                                            <h6 class="card-title"><i class="fas fa-star me-2"></i>Event Features</h6>
+                                            <div class="row">
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label">Promotion</label>
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" id="promotion" name="Promotion" value="1">
+                                                        <label class="form-check-label" for="promotion">
+                                                            Active Promotion
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label">Holiday</label>
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" id="holiday" name="Holiday" value="1">
+                                                        <label class="form-check-label" for="holiday">
+                                                            Holiday Period
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Submit Button -->
+                            <div class="text-center">
+                                <button type="submit" class="btn btn-predict">
+                                    <i class="fas fa-magic me-2"></i>
+                                    Predict Demand
+                                </button>
+                                <div class="loading mt-3">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <p class="mt-2">Calculating prediction...</p>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div id="results" class="row justify-content-center mt-4" style="display: none;">
+            <div class="col-lg-8">
+                <div id="resultContent"></div>
+            </div>
+        </div>
+
+        <!-- Example Predictions Section -->
+        <div class="row justify-content-center mt-5">
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-lightbulb me-2"></i>
+                            Quick Examples
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <button class="btn btn-outline-primary w-100" onclick="loadExample('festive')">
+                                    <i class="fas fa-gift me-2"></i>
+                                    Festive Product
+                                </button>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <button class="btn btn-outline-primary w-100" onclick="loadExample('electronics')">
+                                    <i class="fas fa-laptop me-2"></i>
+                                    Electronics
+                                </button>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <button class="btn btn-outline-primary w-100" onclick="loadExample('health')">
+                                    <i class="fas fa-heartbeat me-2"></i>
+                                    Health Product
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Model Info -->
+    <div class="modal fade" id="modelInfoModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header gradient-bg">
+                    <h5 class="modal-title text-white">Model Information</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="modelInfoContent">
+                    <div class="text-center">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Form submission handler
+        document.getElementById('predictionForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Show loading
+            document.querySelector('.loading').style.display = 'block';
+            document.querySelector('button[type="submit"]').disabled = true;
+            
+            // Collect form data
+            const formData = new FormData(this);
+            const data = {};
+            
+            for (let [key, value] of formData.entries()) {
+                if (key === 'Promotion' || key === 'Holiday') {
+                    data[key] = 1;
+                } else if (['Week', 'Month', 'TrendScore', 'DemandMultiplier', 'CityMultiplier'].includes(key)) {
+                    data[key] = parseFloat(value);
+                } else {
+                    data[key] = value;
+                }
+            }
+            
+            // Add unchecked checkboxes as 0
+            if (!formData.has('Promotion')) data['Promotion'] = 0;
+            if (!formData.has('Holiday')) data['Holiday'] = 0;
+            
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showResult(result, false);
+                } else {
+                    showResult(result, true);
+                }
+                
+            } catch (error) {
+                showResult({error: 'Network error: ' + error.message}, true);
+            } finally {
+                // Hide loading
+                document.querySelector('.loading').style.display = 'none';
+                document.querySelector('button[type="submit"]').disabled = false;
+            }
+        });
+        
+        function showResult(result, isError) {
+            const resultsDiv = document.getElementById('results');
+            const contentDiv = document.getElementById('resultContent');
+            
+            if (isError) {
+                contentDiv.innerHTML = `
+                    <div class="error-result">
+                        <h4><i class="fas fa-exclamation-triangle me-2"></i>Error</h4>
+                        <p class="mb-0">${result.error}</p>
+                    </div>
+                `;
+            } else {
+                contentDiv.innerHTML = `
+                    <div class="prediction-result">
+                        <h4><i class="fas fa-chart-line me-2"></i>Prediction Result</h4>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h2 class="display-4 mb-0">${result.prediction}</h2>
+                                <p class="mb-0">Predicted Units</p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Input Summary:</h6>
+                                <ul class="list-unstyled">
+                                    <li><strong>Product:</strong> ${result.input_data['Product Name']}</li>
+                                    <li><strong>Store:</strong> ${result.input_data['Store Location']}</li>
+                                    <li><strong>Week:</strong> ${result.input_data.Week}</li>
+                                    <li><strong>Promotion:</strong> ${result.input_data.Promotion ? 'Yes' : 'No'}</li>
+                                    <li><strong>Holiday:</strong> ${result.input_data.Holiday ? 'Yes' : 'No'}</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            resultsDiv.style.display = 'block';
+            resultsDiv.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        function loadExample(type) {
+            const examples = {
+                'festive': {
+                    'Week': 40,
+                    'Month': 10,
+                    'Product Name': 'Mithai Gift Box (Diwali)',
+                    'Category': 'Festive',
+                    'Store Location': 'Delhi',
+                    'TrendScore': 50,
+                    'DemandMultiplier': 2.0,
+                    'CityMultiplier': 1.3,
+                    'Promotion': true,
+                    'Holiday': true
+                },
+                'electronics': {
+                    'Week': 20,
+                    'Month': 5,
+                    'Product Name': 'Gaming Headset',
+                    'Category': 'Electronics',
+                    'Store Location': 'Mumbai',
+                    'TrendScore': 35,
+                    'DemandMultiplier': 1.8,
+                    'CityMultiplier': 1.2,
+                    'Promotion': false,
+                    'Holiday': false
+                },
+                'health': {
+                    'Week': 10,
+                    'Month': 3,
+                    'Product Name': 'Hand Sanitizer',
+                    'Category': 'Hygiene',
+                    'Store Location': 'Bangalore',
+                    'TrendScore': 40,
+                    'DemandMultiplier': 2.5,
+                    'CityMultiplier': 1.1,
+                    'Promotion': true,
+                    'Holiday': false
+                }
+            };
+            
+            const example = examples[type];
+            if (example) {
+                // Fill form with example data
+                Object.keys(example).forEach(key => {
+                    const element = document.querySelector(`[name="${key}"]`);
+                    if (element) {
+                        if (element.type === 'checkbox') {
+                            element.checked = example[key];
+                        } else {
+                            element.value = example[key];
+                        }
+                    }
+                });
+                
+                // Scroll to form
+                document.getElementById('predictionForm').scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+        
+        async function showModelInfo() {
+            const modal = new bootstrap.Modal(document.getElementById('modelInfoModal'));
+            modal.show();
+            
+            try {
+                const response = await fetch('/model_info');
+                const info = await response.json();
+                
+                if (info.success) {
+                    document.getElementById('modelInfoContent').innerHTML = `
+                        <div class="row">
+                            <div class="col-6">
+                                <strong>Training R²:</strong><br>
+                                <span class="text-success">${info.training_r2}</span>
+                            </div>
+                            <div class="col-6">
+                                <strong>Test R²:</strong><br>
+                                <span class="text-success">${info.test_r2}</span>
+                            </div>
+                            <div class="col-6 mt-3">
+                                <strong>Test MAE:</strong><br>
+                                <span class="text-info">${info.test_mae}</span>
+                            </div>
+                            <div class="col-6 mt-3">
+                                <strong>Features:</strong><br>
+                                <span class="text-info">${info.num_features}</span>
+                            </div>
+                            <div class="col-6 mt-3">
+                                <strong>Parameters:</strong><br>
+                                <span class="text-info">${info.model_parameters.toLocaleString()}</span>
+                            </div>
+                            <div class="col-6 mt-3">
+                                <strong>Device:</strong><br>
+                                <span class="text-info">${info.device}</span>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('modelInfoContent').innerHTML = `
+                        <div class="alert alert-danger">
+                            Error loading model info: ${info.error}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('modelInfoContent').innerHTML = `
+                    <div class="alert alert-danger">
+                        Network error: ${error.message}
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
